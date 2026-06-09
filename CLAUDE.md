@@ -19,11 +19,30 @@ The app is intentionally basic today (single-user, `localStorage`-only). It will
 
 1. **Proper backend + database** to replace `localStorage` as the source of truth (multi-user, synced across devices).
 2. **User-defined tracking fields** — users add their own habits/metrics to track, instead of the hard-coded `HABITS` array. The `HABITS` schema (`key`/`type`/`good`/`unit`/etc.) is the conceptual seed for this; it will become user data.
-3. **Competitions** — userA invites userB; participants join a shared competition.
-4. **Configurable rules/metrics per competition** — participants pick which metrics count and how they're scored.
-5. **Dashboards at two scopes** — the existing single-user dashboard, plus a competition dashboard comparing all participants.
+3. **Competitions ("challenges")** — userA invites userB; participants join a shared challenge.
+4. **Configurable rules/metrics per challenge** — participants pick which metrics count and how they're scored.
+5. **Dashboards at two scopes** — the existing single-user dashboard, plus a challenge dashboard comparing all participants.
 
 When touching the current single-user code, note in your summary (and here, if structural) how it relates to these phases.
+
+### Design decisions (locked)
+
+These are agreed and should guide all multi-user work. See `vision.txt` for the full narrative.
+
+- **Tech stack:** stay a web app (current PWA frontend can keep living on GitHub Pages). Backend = **Supabase** (Postgres + built-in Auth incl. Google sign-in + Row-Level Security). RLS is the security boundary — the DB itself prevents one user from reading another's private data; never rely on frontend checks for authorization.
+- **Metrics carry `{ type, unit, direction, aggregation }`.** `direction` = higher-better or lower-better; `aggregation` = how daily values roll up (sum / average / count).
+- **Catalog + custom metrics.** There's a predefined global catalog of metric definitions; users can also create their own custom metrics (with the same fields). A custom metric can be **private** or made **public** (shareable/searchable). Challenges reference shared metric definitions so participants' values are comparable.
+- **Auto-subscribe on challenge.** If a challenge includes a metric a participant doesn't already track, that metric is created/subscribed for them automatically.
+- **Scoring = per-metric leaderboards** (no combined score yet). Comparison is **absolute** (not improvement-vs-baseline).
+- **Missing-day rule:** if a user doesn't log a metric on a given day, that day's value is imputed as the **average of that user's logged days** (neutral — leaves their average unchanged). **Exception:** `count` aggregation treats a missing day as **0**.
+- **Challenges are editable:** metrics can be added/dropped mid-challenge; changes apply to all participants equally.
+- **Challenge limits:** customizable duration (in days); up to **10 participants** for now.
+- **Invites** are by existing **username** or by **email** (email invites create a pending row linked on sign-up).
+- **Profiles are Instagram-style:** a unique public `username` plus `name` and optional avatar, searchable by either. Email is *not* a public profile field (stays in `auth.users`).
+- **Reminders:** email-based reminders/notifications to nudge logging (email available from sign-in).
+- **Health sync deferred.** Apple Health has no web API and Google's Fit REST API is being retired, so auto-import of steps/calories/exercise requires a native wrapper (e.g. Capacitor) — explicitly a *later* phase. For now all data is manual entry.
+
+**Target data model is fully specified in [`SCHEMA.md`](SCHEMA.md)** — 7 tables (`profiles`, `metric_defs`, `user_metrics`, `entries`, `challenges`, `challenge_participants`, `challenge_metrics`), the RLS policies that enforce the security boundary, and the computed scoring/imputation logic. Keep `SCHEMA.md` in sync when the model changes.
 
 ## Running / developing
 
