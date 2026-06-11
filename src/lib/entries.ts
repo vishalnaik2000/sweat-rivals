@@ -16,6 +16,27 @@ export async function fetchEntries(userId: string, day: string): Promise<EntryRo
   return (data ?? []) as EntryRow[]
 }
 
+export interface EntryRangeRow {
+  metric_def_id: string
+  day: string
+  value: number | null
+}
+
+export async function fetchEntriesRange(
+  userId: string,
+  from: string,
+  to: string,
+): Promise<EntryRangeRow[]> {
+  const { data, error } = await supabase
+    .from('entries')
+    .select('metric_def_id, day, value')
+    .eq('user_id', userId)
+    .gte('day', from)
+    .lte('day', to)
+  if (error) throw error
+  return (data ?? []) as EntryRangeRow[]
+}
+
 export async function upsertEntry(
   userId: string,
   metricDefId: string,
