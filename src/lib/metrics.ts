@@ -47,6 +47,17 @@ export async function fetchCatalog(): Promise<MetricDef[]> {
   return (data ?? []) as MetricDef[]
 }
 
+// Full metric definitions the user is subscribed to, in their chosen order.
+export async function fetchSubscribedMetrics(userId: string): Promise<MetricDef[]> {
+  const { data, error } = await supabase
+    .from('user_metrics')
+    .select('sort_order, metric_defs(*)')
+    .eq('user_id', userId)
+    .order('sort_order')
+  if (error) throw error
+  return (data ?? []).map((r) => (r as unknown as { metric_defs: MetricDef }).metric_defs)
+}
+
 export async function fetchSubscribedIds(userId: string): Promise<string[]> {
   const { data, error } = await supabase
     .from('user_metrics')
