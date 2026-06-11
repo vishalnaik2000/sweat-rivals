@@ -31,6 +31,17 @@ export function lastNDays(n: number): string[] {
   return out
 }
 
+// All local days from `from`..`to` inclusive (oldest first). Empty if from > to.
+export function daysInRange(from: string, to: string): string[] {
+  const out: string[] = []
+  let d = from
+  while (d <= to) {
+    out.push(d)
+    d = addDays(d, 1)
+  }
+  return out
+}
+
 export function prettyDate(s: string): string {
   if (s === todayStr()) return 'Today'
   if (s === addDays(todayStr(), -1)) return 'Yesterday'

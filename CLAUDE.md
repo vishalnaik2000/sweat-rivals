@@ -81,7 +81,8 @@ src/
     auth.tsx            AuthProvider + useAuth(): { session, profile, loading, refreshProfile, signOut }
     metrics.ts          MetricDef type, CATEGORY_ORDER/LABELS, catalog + subscription queries
     entries.ts          fetch/upsert/delete daily entries (entries table)
-    date.ts             local-time 'YYYY-MM-DD' helpers (todayStr/toStr/parse/addDays/prettyDate)
+    challenges.ts       challenge CRUD, invites, accept/decline, computeLeaderboard()
+    date.ts             local-time 'YYYY-MM-DD' helpers (todayStr/toStr/parse/addDays/daysInRange/prettyDate)
   components/
     Layout.tsx          header (logo + theme toggle) + bottom tab nav + <Outlet/>
     AuthShell.tsx       centered card for auth screens + shared inputClass/btnClass
@@ -92,8 +93,14 @@ src/
     Catalog.tsx         section-wise metric catalog: + subscribe / ⓘ details / subscribed pinned on top
     Today.tsx           logs each subscribed metric for a day; per-type controls + day nav, writes entries
     Dashboard.tsx       per-metric stat cards (Recharts bar charts) over a 7/14/30/90-day range
-    Challenges/Profile  tab screens (Challenges still a placeholder)
+    Challenges.tsx      list: pending invites + your challenges
+    CreateChallenge.tsx form: name, dates, max, pick metrics, invite by username/email
+    ChallengeDetail.tsx per-metric leaderboards, roster, accept/decline invite
+    Profile.tsx         username/name/email + sign out
 ```
+
+- **Challenges** (`src/lib/challenges.ts`). Create inserts the challenge, the creator as an accepted participant, `challenge_metrics`, and invite rows (`user_id` for known usernames, `invited_email` for emails). **Auto-subscribe is client-side per-user**: RLS only lets a user insert their *own* `user_metrics`, so the creator subscribes themselves on create and each invitee subscribes themselves on **accept** (`respondInvite`). Leaderboards are computed client-side in `computeLeaderboard()` using the missing-day rule (average→mean unchanged, sum→mean×elapsed days, count→logged days); ranked by `direction`. Reading rivals' `entries` works only because the `can_read_challenge_entry` RLS policy permits it for shared challenge metrics within the window (both users accepted).
+- **Migration `0003`** relaxes `challenges`/`challenge_participants`/`challenge_metrics` read policies so a *pending* invitee (any participant row, not just accepted) can see the challenge to accept it. Entries cross-read still requires both accepted.
 
 - **Dashboard/Stats** fetches the user's `entries` over the selected range and, per subscribed metric, shows an aggregate (`sum`/`average`/`count` per the metric's `aggregation`) plus a mini bar chart (Recharts). Missing days render as faint bars; lower-is-better metrics use the `--warn` color. Chart colors are CSS theme vars so they follow dark/light.
 
