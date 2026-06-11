@@ -50,15 +50,23 @@ create table metric_defs (
   label        text not null,
   emoji        text,
   type         text not null check (type in ('bool','counter','number','scale','text')),
-  unit         text,
-  direction    text check (direction in ('higher','lower')),   -- nullable for text
+  unit         text,                          -- single canonical unit (°C, km, hrs, min, g, ...)
+  direction    text check (direction in ('higher','lower')),   -- null = neutral/measurement
   aggregation  text not null default 'sum'
                  check (aggregation in ('sum','average','count')),
   visibility   text not null default 'private'
                  check (visibility in ('private','public')),
-  config       jsonb not null default '{}',   -- type-specific: {step, max, ...}
+  category     text,                          -- catalog section: movement, sleep, nutrition, ...
+  description  text,                          -- ⓘ tooltip: what it means + unit
+  is_default   boolean not null default false,-- pre-subscribed for new users (starter set)
+  sort_order   int not null default 0,        -- ordering within a category
+  config       jsonb not null default '{}',   -- type-specific: {max} for scale, {step} for number
   created_at   timestamptz not null default now()
 );
+
+-- Catalog rows have owner_id = NULL. Keep their slugs unique so seeds are idempotent.
+create unique index if not exists metric_defs_catalog_slug
+  on metric_defs (slug) where owner_id is null;
 
 -- 3. user_metrics (subscriptions) ------------------------------------------
 create table user_metrics (
@@ -247,6 +255,13 @@ create policy cm_insert on challenge_metrics for insert to authenticated
 create policy cm_delete on challenge_metrics for delete to authenticated
   using (is_creator(challenge_id));
 ```
+
+## Metric catalog (seeded) & units
+
+- The predefined catalog is seeded in `supabase/migrations/0002_metric_catalog.sql` (~85 metrics, `owner_id = NULL`, `visibility = 'public'`), grouped by `category`.
+- **One canonical unit per metric** — no locale duplicates. Defaults: °C, km, hours for long spans (sleep/fasting/screen time), minutes for short activity durations, kg, metric nutrition (g/mg). Per-user unit *display* conversion is a deferred enhancement, not stored per metric.
+- **Catalog UX:** new users land on a section-wise catalog; tap **+** on a metric to subscribe (creates a `user_metrics` row), and **ⓘ** shows the `description` + unit. The `is_default` starter set (Steps, Exercise, Workout, Water, Sleep, Mood, Reading, Meditation, Weight) is **auto-subscribed at sign-up** (Onboarding) and shown pinned at the top.
+- **Measurement metrics** (Body & Vitals: weight, body fat, BP, glucose, …) have `direction = NULL` — fine for personal tracking, weak for head-to-head; the challenge UI should de-emphasize them.
 
 ## Scoring (computed at read time — not stored)
 

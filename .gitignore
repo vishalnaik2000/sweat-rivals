@@ -1,3 +1,13 @@
 .DS_Store
 # Private planning / roadmap
 vision.txt
+
+# Node / Vite
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local env (Supabase keys) — never commit
+.env
+.env.local
+.env.*.local
