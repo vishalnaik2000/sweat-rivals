@@ -80,6 +80,8 @@ src/
     supabase.ts         supabase client from VITE_ env (throws if unconfigured)
     auth.tsx            AuthProvider + useAuth(): { session, profile, loading, refreshProfile, signOut }
     metrics.ts          MetricDef type, CATEGORY_ORDER/LABELS, catalog + subscription queries
+    entries.ts          fetch/upsert/delete daily entries (entries table)
+    date.ts             local-time 'YYYY-MM-DD' helpers (todayStr/toStr/parse/addDays/prettyDate)
   components/
     Layout.tsx          header (logo + theme toggle) + bottom tab nav + <Outlet/>
     AuthShell.tsx       centered card for auth screens + shared inputClass/btnClass
@@ -88,8 +90,14 @@ src/
     Login.tsx           email/password sign in + sign up
     Onboarding.tsx      pick username (inserts profiles row) + auto-subscribes defaults
     Catalog.tsx         section-wise metric catalog: + subscribe / ⓘ details / subscribed pinned on top
-    Today/Dashboard/Challenges/Profile   tab screens (Today/Dashboard/Challenges still placeholders)
+    Today.tsx           logs each subscribed metric for a day; per-type controls + day nav, writes entries
+    Dashboard.tsx       per-metric stat cards (Recharts bar charts) over a 7/14/30/90-day range
+    Challenges/Profile  tab screens (Challenges still a placeholder)
 ```
+
+- **Dashboard/Stats** fetches the user's `entries` over the selected range and, per subscribed metric, shows an aggregate (`sum`/`average`/`count` per the metric's `aggregation`) plus a mini bar chart (Recharts). Missing days render as faint bars; lower-is-better metrics use the `--warn` color. Chart colors are CSS theme vars so they follow dark/light.
+
+- **Today screen** renders one control per subscribed metric by `type` — `bool` (toggle; avoid-habits use the `--bad` color), `counter` (± from 0), `number` (decimal field, `config.step`), `scale` (1..`config.max`, default 5), `text` (note). Empty/off/cleared values **delete** the entry row; otherwise upsert keyed on `(user_id, metric_def_id, day)`. Day navigation can't go past today.
 
 - **Tabs** (bottom nav, `Layout.tsx`): Today · Stats (`/dashboard`) · Metrics (`/metrics` = Catalog) · Rivals (`/challenges`) · Profile.
 - **Metric catalog** lives in Supabase (`metric_defs`, `owner_id = NULL`), seeded by `supabase/migrations/0002_metric_catalog.sql`; subscriptions are rows in `user_metrics`. Catalog reads/writes go through `src/lib/metrics.ts`. See SCHEMA.md for the full model.

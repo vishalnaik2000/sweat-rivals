@@ -24,6 +24,13 @@ export function addDays(s: string, n: number): string {
   return toStr(d)
 }
 
+// The last n local days ending today, oldest first.
+export function lastNDays(n: number): string[] {
+  const out: string[] = []
+  for (let i = n - 1; i >= 0; i--) out.push(addDays(todayStr(), -i))
+  return out
+}
+
 export function prettyDate(s: string): string {
   if (s === todayStr()) return 'Today'
   if (s === addDays(todayStr(), -1)) return 'Yesterday'
