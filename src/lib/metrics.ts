@@ -18,7 +18,17 @@ export interface MetricDef {
   description: string | null
   is_default: boolean
   sort_order: number
+  aliases: string[] | null
   config: Record<string, unknown>
+}
+
+// Synonym-aware search across label, description and curated aliases.
+// Multi-word queries match when every word is found somewhere.
+export function matchesQuery(m: MetricDef, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  const hay = [m.label, m.description ?? '', ...(m.aliases ?? [])].join(' ').toLowerCase()
+  return q.split(/\s+/).every((term) => hay.includes(term))
 }
 
 // Display order + labels for catalog sections.

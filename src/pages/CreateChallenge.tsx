@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
-import { fetchSubscribedMetrics, type MetricDef } from '../lib/metrics'
+import {
+  fetchSubscribedMetrics,
+  fetchCatalog,
+  matchesQuery,
+  CATEGORY_ORDER,
+  CATEGORY_LABELS,
+  type MetricDef,
+} from '../lib/metrics'
 import { createChallenge } from '../lib/challenges'
 import { todayStr, addDays } from '../lib/date'
 
@@ -15,7 +22,10 @@ export default function CreateChallenge() {
   const [end, setEnd] = useState(addDays(todayStr(), 7))
   const [maxParticipants, setMax] = useState(10)
   const [metrics, setMetrics] = useState<MetricDef[]>([])
+  const [catalog, setCatalog] = useState<MetricDef[]>([])
   const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [showAll, setShowAll] = useState(false)
+  const [catalogQuery, setCatalogQuery] = useState('')
   const [inviteInput, setInviteInput] = useState('')
   const [invites, setInvites] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
@@ -23,7 +33,11 @@ export default function CreateChallenge() {
 
   useEffect(() => {
     fetchSubscribedMetrics(userId).then(setMetrics)
+    fetchCatalog().then(setCatalog)
   }, [userId])
+
+  const byId = new Map(catalog.map((m) => [m.id, m]))
+  const selected = [...picked].map((id) => byId.get(id)).filter((m): m is MetricDef => !!m)
 
   function togglePick(id: string) {
     setPicked((s) => {
@@ -111,27 +125,92 @@ export default function CreateChallenge() {
           <label className="mb-1 block text-sm font-medium">
             Metrics to compete on{picked.size > 0 && ` · ${picked.size}`}
           </label>
-          {metrics.length === 0 ? (
-            <p className="text-sm text-muted">
-              You aren&apos;t tracking any metrics yet — add some from the Metrics tab first.
-            </p>
-          ) : (
+
+          {/* Currently selected (any source) */}
+          {selected.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {selected.map((m) => (
+                <button
+                  type="button"
+                  key={m.id}
+                  onClick={() => togglePick(m.id)}
+                  className="flex items-center gap-1 rounded-full border border-accent bg-accent/15 px-3 py-1.5 text-sm text-accent"
+                >
+                  {m.emoji} {m.label} <span className="text-muted">×</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Quick pick from your subscribed metrics */}
+          {metrics.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {metrics.map((m) => {
-                const on = picked.has(m.id)
-                return (
+              {metrics
+                .filter((m) => !picked.has(m.id))
+                .map((m) => (
                   <button
                     type="button"
                     key={m.id}
                     onClick={() => togglePick(m.id)}
-                    className={`rounded-full border px-3 py-1.5 text-sm ${
-                      on ? 'border-accent bg-accent/15 text-accent' : 'border-border text-muted hover:bg-surface'
-                    }`}
+                    className="rounded-full border border-border px-3 py-1.5 text-sm text-muted hover:bg-surface"
                   >
                     {m.emoji} {m.label}
                   </button>
-                )
-              })}
+                ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setShowAll((v) => !v)}
+            className="mt-2 text-sm font-medium text-accent hover:underline"
+          >
+            {showAll ? 'Hide full catalog' : '+ More metrics'}
+          </button>
+
+          {showAll && (
+            <div className="mt-2 rounded-lg border border-border p-2">
+              <input
+                type="search"
+                placeholder="Search all metrics…"
+                value={catalogQuery}
+                onChange={(e) => setCatalogQuery(e.target.value)}
+                className="mb-2 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+              <div className="max-h-72 space-y-3 overflow-y-auto">
+                {CATEGORY_ORDER.map((cat) => {
+                  const items = catalog.filter(
+                    (m) => m.category === cat && matchesQuery(m, catalogQuery),
+                  )
+                  if (!items.length) return null
+                  return (
+                    <div key={cat}>
+                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
+                        {CATEGORY_LABELS[cat]}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {items.map((m) => {
+                          const on = picked.has(m.id)
+                          return (
+                            <button
+                              type="button"
+                              key={m.id}
+                              onClick={() => togglePick(m.id)}
+                              className={`rounded-full border px-3 py-1.5 text-sm ${
+                                on
+                                  ? 'border-accent bg-accent/15 text-accent'
+                                  : 'border-border text-muted hover:bg-surface'
+                              }`}
+                            >
+                              {m.emoji} {m.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>
