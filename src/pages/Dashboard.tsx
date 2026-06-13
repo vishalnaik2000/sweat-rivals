@@ -4,10 +4,12 @@ import { ResponsiveContainer, BarChart, Bar, Tooltip, Cell } from 'recharts'
 import { useAuth } from '../lib/auth'
 import { fetchSubscribedMetrics, type MetricDef } from '../lib/metrics'
 import { fetchEntriesRange } from '../lib/entries'
-import { lastNDays } from '../lib/date'
+import { lastNDays, todayStr, addDays } from '../lib/date'
+import { computeStreak } from '../lib/streak'
 
 const RANGES = [7, 14, 30, 90] as const
 type Range = (typeof RANGES)[number]
+const STREAK_WINDOW = 90
 
 function fmt(n: number | null): string {
   if (n == null) return '–'
@@ -22,7 +24,7 @@ export default function Dashboard() {
 
   const [range, setRange] = useState<Range>(7)
   const [metrics, setMetrics] = useState<MetricDef[]>([])
-  // value lookup: metricId -> day -> value
+  // metricId -> day -> value, for the whole streak window (chart slices the last `range`)
   const [byMetricDay, setByMetricDay] = useState<Record<string, Record<string, number | null>>>({})
   const [loading, setLoading] = useState(true)
 
@@ -34,16 +36,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     setLoading(true)
-    fetchEntriesRange(userId, days[0], days[days.length - 1])
+    fetchEntriesRange(userId, addDays(todayStr(), -(STREAK_WINDOW - 1)), todayStr())
       .then((rows) => {
         const map: Record<string, Record<string, number | null>> = {}
-        for (const r of rows) {
-          ;(map[r.metric_def_id] ??= {})[r.day] = r.value
-        }
+        for (const r of rows) (map[r.metric_def_id] ??= {})[r.day] = r.value
         setByMetricDay(map)
       })
       .finally(() => setLoading(false))
-  }, [userId, days])
+  }, [userId])
 
   return (
     <section>
@@ -103,6 +103,8 @@ function StatCard({
     else agg = logged.length // count
   }
 
+  const streak = computeStreak(m, byDay, STREAK_WINDOW)
+
   // lower-is-better metrics get a warm color; others the accent.
   const color = m.direction === 'lower' ? 'var(--warn)' : 'var(--accent)'
 
@@ -111,6 +113,12 @@ function StatCard({
       <div className="mb-1 flex items-center gap-2">
         <span>{m.emoji}</span>
         <span className="truncate text-sm font-medium">{m.label}</span>
+        {streak > 0 && (
+          <span className="ml-auto shrink-0 text-xs font-semibold">
+            🔥 {streak}
+            {streak >= STREAK_WINDOW ? '+' : ''}
+          </span>
+        )}
       </div>
       <div className="mb-2 flex items-baseline gap-1">
         <span className="text-2xl font-bold">{fmt(agg)}</span>
