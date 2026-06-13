@@ -90,8 +90,8 @@ src/
     AuthShell.tsx       centered card for auth screens + shared inputClass/btnClass
     Placeholder.tsx     temporary stub card for unbuilt screens
   pages/
-    Login.tsx           email/password sign in + sign up
-    Onboarding.tsx      pick username (inserts profiles row) + auto-subscribes defaults
+    Login.tsx           "Continue with Google" (OAuth) + email/password sign in + sign up
+    Onboarding.tsx      pick username (inserts profiles row, prefilled from Google) + auto-subscribes defaults
     Catalog.tsx         section-wise metric catalog: + subscribe / ⓘ details / subscribed pinned on top
     Today.tsx           logs each subscribed metric for a day; per-type controls + day nav, writes entries
     Dashboard.tsx       per-metric stat cards (Recharts bar charts) over a 7/14/30/90-day range
@@ -113,7 +113,7 @@ src/
 - **Tabs** (bottom nav, `Layout.tsx`): Today · Stats (`/dashboard`) · Metrics (`/metrics` = Catalog) · Rivals (`/challenges`) · Profile.
 - **Metric catalog** lives in Supabase (`metric_defs`, `owner_id = NULL`), seeded by `supabase/migrations/0002_metric_catalog.sql`; subscriptions are rows in `user_metrics`. Catalog reads/writes go through `src/lib/metrics.ts`. See SCHEMA.md for the full model.
 
-- **Auth gating** lives in `App.tsx`: `loading` → spinner; no `session` → `Login`; session but no `profile` row → `Onboarding`; otherwise the `Layout` tab routes. `AuthProvider` (in `main.tsx`, wraps the router) tracks the Supabase session via `onAuthStateChange` and loads the matching `profiles` row. A user record exists in `auth.users` the moment they sign up; the **`profiles` row is created by Onboarding** (chosen username) — that's why "signed in but no profile" is its own state.
+- **Auth gating** lives in `App.tsx`: `loading` → spinner; no `session` → `Login`; session but no `profile` row → `Onboarding`; otherwise the `Layout` tab routes. **Google sign-in** uses `supabase.auth.signInWithOAuth({ provider:'google', options:{ redirectTo } })` where `redirectTo = window.location.origin + import.meta.env.BASE_URL` (works for localhost + Pages). After the OAuth round-trip, AuthProvider picks up the session and (no profile yet) routes to Onboarding, which prefills name/username/avatar from `user.user_metadata`. Requires the Google provider enabled in Supabase + the app's redirect URLs allow-listed there. `AuthProvider` (in `main.tsx`, wraps the router) tracks the Supabase session via `onAuthStateChange` and loads the matching `profiles` row. A user record exists in `auth.users` the moment they sign up; the **`profiles` row is created by Onboarding** (chosen username) — that's why "signed in but no profile" is its own state.
 
 - **Theming (dark/light from day one).** Tokens are CSS variables in `src/index.css`: `:root` = light, `.dark` = dark. `@theme inline` maps them to Tailwind utilities (`bg-bg`, `text-fg`, `text-muted`, `border-border`, `bg-accent`, `text-good/bad/warn`, …). **Always style with these semantic utilities, not hard-coded colors**, so both themes work automatically. Toggling adds/removes `.dark` on `<html>` (via `useTheme`); a script in `index.html` applies the saved theme pre-paint to avoid a flash. Dark keeps the original deep-navy DNA (`#0f1220`).
 

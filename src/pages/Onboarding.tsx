@@ -5,10 +5,24 @@ import AuthShell, { inputClass, btnClass } from '../components/AuthShell'
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/
 
+// Build a valid username suggestion from a name or email local-part.
+function suggestUsername(seed: string): string {
+  return seed
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '')
+    .slice(0, 20)
+}
+
 export default function Onboarding() {
   const { session, refreshProfile, signOut } = useAuth()
-  const [username, setUsername] = useState('')
-  const [name, setName] = useState('')
+  const meta = (session?.user.user_metadata ?? {}) as Record<string, string>
+  const googleName = meta.full_name || meta.name || ''
+  const googleAvatar = meta.avatar_url || meta.picture || null
+
+  const [username, setUsername] = useState(
+    suggestUsername(googleName || (session?.user.email ?? '').split('@')[0] || ''),
+  )
+  const [name, setName] = useState(googleName)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,6 +40,7 @@ export default function Onboarding() {
       id: session!.user.id,
       username: u,
       name: name.trim() || null,
+      avatar_url: googleAvatar,
     })
 
     if (error) {
