@@ -10,6 +10,7 @@ import CreateMetric from './pages/CreateMetric'
 import Challenges from './pages/Challenges'
 import CreateChallenge from './pages/CreateChallenge'
 import ChallengeDetail from './pages/ChallengeDetail'
+import Join from './pages/Join'
 import Profile from './pages/Profile'
 
 export default function App() {
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="challenges" element={<Challenges />} />
         <Route path="challenges/new" element={<CreateChallenge />} />
         <Route path="challenges/:id" element={<ChallengeDetail />} />
+        <Route path="join/:code" element={<Join />} />
         <Route path="profile" element={<Profile />} />
       </Route>
     </Routes>

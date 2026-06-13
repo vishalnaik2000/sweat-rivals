@@ -12,7 +12,18 @@ export interface Challenge {
   end_date: string
   max_participants: number
   status: ChallengeStatus
+  join_code: string
   created_at: string
+}
+
+export interface ChallengePreview {
+  id: string
+  name: string
+  start_date: string
+  end_date: string
+  participants: number
+  metrics: number
+  status: ChallengeStatus
 }
 
 export interface Participant {
@@ -153,6 +164,27 @@ export async function createChallenge(userId: string, c: NewChallenge) {
 
   await subscribeSelfToMetrics(userId, c.metricIds)
   return { challengeId, unresolved }
+}
+
+// Build the shareable join URL for a challenge.
+export function joinUrl(joinCode: string): string {
+  return `${window.location.origin}${import.meta.env.BASE_URL}join/${joinCode}`
+}
+
+export async function getChallengePreview(code: string): Promise<ChallengePreview | null> {
+  const { data, error } = await supabase.rpc('challenge_preview_by_code', { p_code: code })
+  if (error) throw error
+  return ((data as ChallengePreview[])?.[0]) ?? null
+}
+
+// Join via shared code, then subscribe self to the challenge's metrics.
+export async function joinByCode(userId: string, code: string): Promise<string> {
+  const { data, error } = await supabase.rpc('join_challenge_by_code', { p_code: code })
+  if (error) throw error
+  const challengeId = data as string
+  const defs = await fetchChallengeMetricDefs(challengeId)
+  await subscribeSelfToMetrics(userId, defs.map((d) => d.id))
+  return challengeId
 }
 
 export async function respondInvite(

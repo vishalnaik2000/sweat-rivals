@@ -98,12 +98,14 @@ src/
     Dashboard.tsx       per-metric stat cards (Recharts bar charts) over a 7/14/30/90-day range
     Challenges.tsx      list: pending invites + your challenges
     CreateChallenge.tsx form: name, dates, max, pick metrics, invite by username/email
-    ChallengeDetail.tsx per-metric leaderboards, roster, accept/decline invite
-    Profile.tsx         username/name/email + sign out
+    ChallengeDetail.tsx per-metric leaderboards, roster, accept/decline, share link (WhatsApp/copy)
+    Join.tsx            open a shared join link: preview the challenge + Join
+    Profile.tsx         username/name/avatar upload + sign out
 ```
 
 - **Challenges** (`src/lib/challenges.ts`). Create inserts the challenge, the creator as an accepted participant, `challenge_metrics`, and invite rows (`user_id` for known usernames, `invited_email` for emails). **Auto-subscribe is client-side per-user**: RLS only lets a user insert their *own* `user_metrics`, so the creator subscribes themselves on create and each invitee subscribes themselves on **accept** (`respondInvite`). Leaderboards are computed client-side in `computeLeaderboard()` using the missing-day rule (average→mean unchanged, sum→mean×elapsed days, count→logged days); ranked by `direction`. Reading rivals' `entries` works only because the `can_read_challenge_entry` RLS policy permits it for shared challenge metrics within the window (both users accepted).
 - **Migration `0003`** relaxes `challenges`/`challenge_participants`/`challenge_metrics` read policies so a *pending* invitee (any participant row, not just accepted) can see the challenge to accept it. Entries cross-read still requires both accepted.
+- **Share/join links** (migration `0006`). Each challenge has an unguessable `join_code`; `joinUrl()` builds `<origin>/<base>join/<code>`. ChallengeDetail offers WhatsApp share + copy. The `Join` page previews via `challenge_preview_by_code(p_code)` and joins via `join_challenge_by_code(p_code)` — both **SECURITY DEFINER RPCs** so non-members still can't read arbitrary challenges, the code is the only way in, and capacity is enforced server-side. Joining auto-subscribes the user to the challenge metrics. Google login uses `redirectTo = window.location.href` so a join link survives the OAuth round-trip.
 
 - **Dashboard/Stats** fetches the user's `entries` over the selected range and, per subscribed metric, shows an aggregate (`sum`/`average`/`count` per the metric's `aggregation`) plus a mini bar chart (Recharts). Missing days render as faint bars; lower-is-better metrics use the `--warn` color. Chart colors are CSS theme vars so they follow dark/light.
 
