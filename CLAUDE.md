@@ -64,6 +64,8 @@ Supabase keys: copy `.env.example` → `.env` and fill `VITE_SUPABASE_URL` / `VI
 
 To run the **legacy** app instead: `cd legacy && python3 -m http.server 8000`. Its `sw.js` is cache-first — bump the `CACHE` version string when changing cached assets.
 
+**Deployment.** Pushing to `main` triggers `.github/workflows/deploy.yml`, which `npm run build`s (injecting `VITE_SUPABASE_*` from repo secrets) and publishes `dist/` to GitHub Pages (source = GitHub Actions). The workflow copies `index.html`→`404.html` so SPA deep links survive a refresh. Live at https://vishalnaik2000.github.io/sweat-rivals/. To change Supabase keys in prod, update the repo secrets (`gh secret set …`), not a committed file.
+
 ## Architecture (React app)
 
 Single-page app, client talks directly to Supabase (RLS is the security boundary — see SCHEMA.md). No separate backend server; server-side logic later lives in Postgres functions / Supabase Edge Functions, not a hand-written API.
