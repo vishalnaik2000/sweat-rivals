@@ -92,7 +92,8 @@ src/
   pages/
     Login.tsx           "Continue with Google" (OAuth) + email/password sign in + sign up
     Onboarding.tsx      pick username (inserts profiles row, prefilled from Google) + auto-subscribes defaults
-    Catalog.tsx         section-wise metric catalog: + subscribe / ⓘ details / subscribed pinned on top
+    Catalog.tsx         section-wise metric catalog: search, + subscribe, ⓘ details, subscribed pinned, "Create" entry
+    CreateMetric.tsx    form to create a custom metric (owner_id = you), private/public, auto-tracks it
     Today.tsx           logs each subscribed metric for a day; per-type controls + day nav, writes entries
     Dashboard.tsx       per-metric stat cards (Recharts bar charts) over a 7/14/30/90-day range
     Challenges.tsx      list: pending invites + your challenges
@@ -108,6 +109,7 @@ src/
 
 - **Today screen** renders one control per subscribed metric by `type` — `bool` (toggle; avoid-habits use the `--bad` color), `counter` (typeable number field with ± steppers, so large counts like steps are entered directly), `number` (decimal field, `config.step`), `scale` (1..`config.max`, default 5), `text` (note). Typed fields commit on blur (`onValueLocal` updates the display without writing); taps commit immediately. Empty/off/cleared values **delete** the entry row; otherwise upsert keyed on `(user_id, metric_def_id, day)`. Day navigation can't go past today.
 - **Catalog search** is synonym-aware via `matchesQuery()` (searches label + description + `metric_defs.aliases`), so e.g. "booze"→Alcohol. Aliases are curated (migration `0004`), not ML embeddings. CreateChallenge reuses this with a "More metrics" expander to pick *any* catalog metric (not just subscribed ones) — the creator auto-subscribes to whatever they pick.
+- **Custom metrics** (`createCustomMetric` in `metrics.ts`): inserts a `metric_defs` row with `owner_id = you`, `category = 'custom'`, chosen `visibility` (private/public), then auto-subscribes you. Reached from Catalog ("+ Create", or "Create '<query>'" when search is empty). Custom + public-from-others metrics (any `category` outside `CATEGORY_ORDER`) render under a "Custom & community" catch-all group in the catalog, and surface via search.
 - **Avatars** upload to the public `avatars` Storage bucket at `<uid>/avatar.<ext>` (migration `0005` creates the bucket + owner-only write policies); the public URL is saved to `profiles.avatar_url`. Profile shows the image (falls back to the name initial).
 
 - **Tabs** (bottom nav, `Layout.tsx`): Today · Stats (`/dashboard`) · Metrics (`/metrics` = Catalog) · Rivals (`/challenges`) · Profile.

@@ -6,6 +6,7 @@ import Onboarding from './pages/Onboarding'
 import Today from './pages/Today'
 import Dashboard from './pages/Dashboard'
 import Catalog from './pages/Catalog'
+import CreateMetric from './pages/CreateMetric'
 import Challenges from './pages/Challenges'
 import CreateChallenge from './pages/CreateChallenge'
 import ChallengeDetail from './pages/ChallengeDetail'
@@ -42,6 +43,7 @@ export default function App() {
         <Route index element={<Today />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="metrics" element={<Catalog />} />
+        <Route path="metrics/new" element={<CreateMetric />} />
         <Route path="challenges" element={<Challenges />} />
         <Route path="challenges/new" element={<CreateChallenge />} />
         <Route path="challenges/:id" element={<ChallengeDetail />} />
