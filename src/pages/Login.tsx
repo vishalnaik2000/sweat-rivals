@@ -13,8 +13,8 @@ export default function Login() {
   async function google() {
     setError(null)
     setNotice(null)
-    // Redirect back to the app (works for both localhost dev and the Pages URL).
-    const redirectTo = window.location.origin + import.meta.env.BASE_URL
+    // Return to the exact current URL so a shared /join/:code link survives login.
+    const redirectTo = window.location.href
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },

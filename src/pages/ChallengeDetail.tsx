@@ -9,6 +9,7 @@ import {
   fetchChallengeEntries,
   respondInvite,
   computeLeaderboard,
+  joinUrl,
   type Challenge,
   type Participant,
   type ChallengeEntry,
@@ -30,6 +31,7 @@ export default function ChallengeDetail() {
   const [entries, setEntries] = useState<ChallengeEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const load = useCallback(async () => {
     if (!id) return
@@ -68,6 +70,12 @@ export default function ChallengeDetail() {
   const effEnd = challenge.end_date < todayStr() ? challenge.end_date : todayStr()
   const elapsedDays = daysInRange(challenge.start_date, effEnd).length
 
+  async function copyLink() {
+    await navigator.clipboard.writeText(joinUrl(challenge!.join_code))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
   async function respond(accept: boolean) {
     setBusy(true)
     try {
@@ -89,6 +97,29 @@ export default function ChallengeDetail() {
           {prettyDate(challenge.start_date)} – {prettyDate(challenge.end_date)} · {elapsedDays} day
           {elapsedDays === 1 ? '' : 's'} in
         </p>
+      </div>
+
+      <div className="rounded-xl border border-border bg-surface p-4">
+        <p className="text-sm font-medium">Invite friends</p>
+        <p className="mb-3 text-xs text-muted">Anyone with this link can join — no username needed.</p>
+        <div className="flex gap-2">
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(
+              `Join my "${challenge.name}" challenge on Sweat Rivals! ${joinUrl(challenge.join_code)}`,
+            )}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 rounded-lg bg-[#25D366] px-3 py-2 text-center text-sm font-semibold text-white hover:opacity-90"
+          >
+            Share on WhatsApp
+          </a>
+          <button
+            onClick={copyLink}
+            className="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-bg"
+          >
+            {copied ? 'Copied ✓' : 'Copy link'}
+          </button>
+        </div>
       </div>
 
       {myStatus === 'invited' && (
