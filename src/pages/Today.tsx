@@ -62,6 +62,11 @@ export default function Today() {
     commit(m, v, null)
   }
 
+  // Update the on-screen value without writing (used while typing; commit on blur).
+  function updateLocal(m: MetricDef, v: number | null) {
+    setValues((s) => ({ ...s, [m.id]: v }))
+  }
+
   function setNote(m: MetricDef, text: string) {
     setNotes((s) => ({ ...s, [m.id]: text }))
     commit(m, null, text)
@@ -118,6 +123,7 @@ export default function Today() {
                 note={notes[m.id] ?? ''}
                 day={day}
                 onValue={(v) => setValue(m, v)}
+                onValueLocal={(v) => updateLocal(m, v)}
                 onNote={(t) => setNote(m, t)}
               />
             </li>
@@ -134,6 +140,7 @@ function Control({
   note,
   day,
   onValue,
+  onValueLocal,
   onNote,
 }: {
   m: MetricDef
@@ -141,6 +148,7 @@ function Control({
   note: string
   day: string
   onValue: (v: number | null) => void
+  onValueLocal: (v: number | null) => void
   onNote: (t: string) => void
 }) {
   if (m.type === 'bool') {
@@ -160,20 +168,31 @@ function Control({
 
   if (m.type === 'counter') {
     const v = value ?? 0
+    const clean = (raw: string): number | null =>
+      raw === '' ? null : Math.max(0, Math.floor(Number(raw) || 0))
     return (
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <button
           onClick={() => onValue(value == null ? null : Math.max(0, v - 1))}
-          className="h-10 w-10 rounded-lg border border-border text-xl hover:bg-bg"
+          className="h-10 w-10 shrink-0 rounded-lg border border-border text-xl hover:bg-bg"
+          aria-label="Decrease"
         >
           −
         </button>
-        <span className={`min-w-10 text-center text-xl font-bold ${value == null ? 'text-muted' : ''}`}>
-          {v}
-        </span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          value={value ?? ''}
+          placeholder="0"
+          onChange={(e) => onValueLocal(clean(e.target.value))}
+          onBlur={(e) => onValue(clean(e.target.value))}
+          className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-center text-lg font-bold outline-none focus:border-accent"
+        />
         <button
           onClick={() => onValue(v + 1)}
-          className="h-10 w-10 rounded-lg border border-border text-xl hover:bg-bg"
+          className="h-10 w-10 shrink-0 rounded-lg border border-border text-xl hover:bg-bg"
+          aria-label="Increase"
         >
           +
         </button>
