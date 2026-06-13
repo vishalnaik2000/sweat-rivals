@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { fetchSubscribedMetrics, type MetricDef } from '../lib/metrics'
-import { fetchEntries, upsertEntry, deleteEntry } from '../lib/entries'
+import { fetchEntries, fetchEntriesRange, upsertEntry, deleteEntry } from '../lib/entries'
 import { todayStr, addDays, prettyDate } from '../lib/date'
+import { computeStreak } from '../lib/streak'
+
+const STREAK_WINDOW = 90
 
 type Status = 'idle' | 'saving' | 'saved'
 
@@ -15,6 +18,8 @@ export default function Today() {
   const [metrics, setMetrics] = useState<MetricDef[]>([])
   const [values, setValues] = useState<Record<string, number | null>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
+  // history for streaks: metricId -> day -> value (last STREAK_WINDOW days)
+  const [hist, setHist] = useState<Record<string, Record<string, number | null>>>({})
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState<Status>('idle')
 
@@ -22,6 +27,14 @@ export default function Today() {
 
   useEffect(() => {
     fetchSubscribedMetrics(userId).then(setMetrics)
+  }, [userId])
+
+  useEffect(() => {
+    fetchEntriesRange(userId, addDays(todayStr(), -(STREAK_WINDOW - 1)), todayStr()).then((rows) => {
+      const h: Record<string, Record<string, number | null>> = {}
+      for (const r of rows) (h[r.metric_def_id] ??= {})[r.day] = r.value
+      setHist(h)
+    })
   }, [userId])
 
   useEffect(() => {
@@ -43,12 +56,30 @@ export default function Today() {
   async function commit(m: MetricDef, value: number | null, note: string | null) {
     setStatus('saving')
     try {
+      let stored: number | null | undefined // undefined = row removed
       if (m.type === 'text') {
-        if (note && note.trim()) await upsertEntry(userId, m.id, day, null, note.trim())
-        else await deleteEntry(userId, m.id, day)
+        if (note && note.trim()) {
+          await upsertEntry(userId, m.id, day, null, note.trim())
+          stored = null
+        } else {
+          await deleteEntry(userId, m.id, day)
+          stored = undefined
+        }
+      } else if (value == null) {
+        await deleteEntry(userId, m.id, day)
+        stored = undefined
       } else {
-        if (value == null) await deleteEntry(userId, m.id, day)
-        else await upsertEntry(userId, m.id, day, value, null)
+        await upsertEntry(userId, m.id, day, value, null)
+        stored = value
+      }
+      // keep the streak history in sync so 🔥 updates live as you log
+      if (day >= addDays(todayStr(), -(STREAK_WINDOW - 1))) {
+        setHist((h) => {
+          const metric = { ...(h[m.id] ?? {}) }
+          if (stored === undefined) delete metric[day]
+          else metric[day] = stored
+          return { ...h, [m.id]: metric }
+        })
       }
       setStatus('saved')
       setTimeout(() => setStatus('idle'), 1200)
@@ -116,6 +147,15 @@ export default function Today() {
                 <span className="text-lg">{m.emoji}</span>
                 <span className="font-medium">{m.label}</span>
                 {m.unit && <span className="text-xs text-muted">({m.unit})</span>}
+                {(() => {
+                  const s = computeStreak(m, hist[m.id] ?? {}, STREAK_WINDOW)
+                  return s > 0 ? (
+                    <span className="ml-auto shrink-0 rounded-full bg-bg px-2 py-0.5 text-xs font-semibold">
+                      🔥 {s}
+                      {s >= STREAK_WINDOW ? '+' : ''}
+                    </span>
+                  ) : null
+                })()}
               </div>
               <Control
                 m={m}
