@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import {
   fetchCatalog,
@@ -105,11 +106,20 @@ export default function Catalog() {
   const searching = query.trim().length > 0
   const results = searching ? defs.filter((d) => matchesQuery(d, query)) : []
   const subscribed = defs.filter((d) => subs.has(d.id))
-  const groups = CATEGORY_ORDER.map((cat) => ({
-    cat,
-    label: CATEGORY_LABELS[cat],
-    items: defs.filter((d) => d.category === cat),
-  })).filter((g) => g.items.length > 0)
+  const known = new Set<string>(CATEGORY_ORDER)
+  const groups = [
+    ...CATEGORY_ORDER.map((cat) => ({
+      cat: cat as string,
+      label: CATEGORY_LABELS[cat],
+      items: defs.filter((d) => d.category === cat),
+    })),
+    // catch-all for custom / community metrics (category not in the standard set)
+    {
+      cat: 'custom',
+      label: 'Custom & community',
+      items: defs.filter((d) => !d.category || !known.has(d.category)),
+    },
+  ].filter((g) => g.items.length > 0)
 
   return (
     <section className="space-y-6">
@@ -118,13 +128,21 @@ export default function Catalog() {
         <p className="mt-1 text-sm text-muted">Tap + to track a metric · ⓘ for details.</p>
       </header>
 
-      <input
-        type="search"
-        placeholder="Search metrics… (try “booze”, “gym”, “soda”)"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="w-full rounded-lg border border-border bg-bg px-3 py-2 outline-none focus:border-accent"
-      />
+      <div className="flex gap-2">
+        <input
+          type="search"
+          placeholder="Search metrics… (try “booze”, “gym”, “soda”)"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="w-full rounded-lg border border-border bg-bg px-3 py-2 outline-none focus:border-accent"
+        />
+        <Link
+          to="/metrics/new"
+          className="shrink-0 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-surface"
+        >
+          + Create
+        </Link>
+      </div>
 
       {searching ? (
         <div>
@@ -132,9 +150,16 @@ export default function Catalog() {
             {results.length} result{results.length === 1 ? '' : 's'}
           </h2>
           {results.length === 0 ? (
-            <p className="text-sm text-muted">
-              No matches. Try another word — most habits are already in the catalog.
-            </p>
+            <div className="rounded-lg border border-border bg-surface p-4 text-center text-sm text-muted">
+              No matches for “{query.trim()}”.
+              <br />
+              <Link
+                to={`/metrics/new?name=${encodeURIComponent(query.trim())}`}
+                className="font-medium text-accent hover:underline"
+              >
+                Create “{query.trim()}” as a metric →
+              </Link>
+            </div>
           ) : (
             <ul className="space-y-2">
               {results.map((m) => (

@@ -51,6 +51,52 @@ export const CATEGORY_LABELS: Record<string, string> = {
   finance: 'Finance',
 }
 
+export interface NewMetricInput {
+  label: string
+  emoji: string | null
+  type: MetricType
+  unit: string | null
+  direction: Direction
+  aggregation: Aggregation
+  visibility: 'private' | 'public'
+  description: string | null
+  config: Record<string, unknown>
+}
+
+function slugify(s: string): string {
+  const base = s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 40)
+  return `${base || 'metric'}_${Math.random().toString(36).slice(2, 6)}`
+}
+
+// Create a user-owned custom metric. owner_id = the user; category 'custom'.
+export async function createCustomMetric(userId: string, input: NewMetricInput): Promise<string> {
+  const { data, error } = await supabase
+    .from('metric_defs')
+    .insert({
+      owner_id: userId,
+      slug: slugify(input.label),
+      label: input.label.trim(),
+      emoji: input.emoji,
+      type: input.type,
+      unit: input.unit,
+      direction: input.direction,
+      aggregation: input.aggregation,
+      visibility: input.visibility,
+      category: 'custom',
+      description: input.description,
+      config: input.config,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return (data as { id: string }).id
+}
+
 export async function fetchCatalog(): Promise<MetricDef[]> {
   const { data, error } = await supabase.from('metric_defs').select('*').order('sort_order')
   if (error) throw error
